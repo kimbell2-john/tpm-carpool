@@ -109,7 +109,7 @@ main_car_icon_html = get_local_car_base64_html("supercar.jpg", target_height=60)
 sub_place_icon_html = get_local_place_base64_html("jeju.jpeg", target_height=50)
 
 st.markdown(f"# {main_car_icon_html} APP1 TPM 카풀 매니저", unsafe_allow_html=True)
-st.markdown(f"### {sub_place_icon_html}" + ":green[2026년 2월 24일(화) 18:30] " + " [제줏간 영통구청점](https://naver.me/G9r55exO) ", unsafe_allow_html=True)
+# st.markdown(f"### {sub_place_icon_html}" + ":green[2026년 2월 24일(화) 18:30] " + " [제줏간 영통구청점](https://naver.me/G9r55exO) ", unsafe_allow_html=True)
 st.markdown("---")
 
 # 데이터 로드
@@ -497,3 +497,4 @@ for i in range(5, 0, -1):
     time.sleep(1)
 
 st.rerun()
+
