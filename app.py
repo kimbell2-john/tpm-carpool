@@ -165,9 +165,11 @@ elif st.session_state.selected_role == "passenger":
             st.session_state.party_confirmed = False
             st.rerun()
 
+db_password = st.secrets["db_password"]
+
 st.sidebar.markdown("---")
 with st.sidebar.expander("👑 관리자 메뉴"):
-    if st.text_input("암구호", type="password") == "1325":
+    if st.text_input("암구호", type="password") == db_password:
         if st.button("🚨 데이터 초기화", type="primary"):
             db = {"cars": [], "passengers": []}
             save_data(db)
@@ -497,4 +499,5 @@ for i in range(5, 0, -1):
     time.sleep(1)
 
 st.rerun()
+
 
