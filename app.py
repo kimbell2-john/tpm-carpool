@@ -109,7 +109,6 @@ main_car_icon_html = get_local_car_base64_html("supercar.jpg", target_height=60)
 sub_place_icon_html = get_local_place_base64_html("jeju.jpeg", target_height=50)
 
 st.markdown(f"# {main_car_icon_html} APP1 TPM 카풀 매니저", unsafe_allow_html=True)
-# st.markdown(f"### {sub_place_icon_html}" + ":green[2026년 2월 24일(화) 18:30] " + " [제줏간 영통구청점](https://naver.me/G9r55exO) ", unsafe_allow_html=True)
 st.markdown("---")
 
 # 데이터 로드
@@ -118,7 +117,6 @@ if 'selected_role' not in st.session_state:
     st.session_state.selected_role = None
 if 'last_notice_id' not in st.session_state:
     st.session_state.last_notice_id = ""
-# [추가] 입장 확인용 상태 (OK 버튼 눌렀는지 여부)
 if 'party_confirmed' not in st.session_state:
     st.session_state.party_confirmed = False
 
@@ -145,7 +143,6 @@ my_party_size = 1
 if st.session_state.selected_role == "driver":
     st.sidebar.success("✅ [운전자] 모드로 접속 중")
 elif st.session_state.selected_role == "passenger":
-	# [변경] 탑승자일 때만 입력창이 뜨도록 이곳으로 옮겼사옵니다.
     st.sidebar.markdown("---")
     st.sidebar.subheader("🏃 동승자 설정")
     companion_count = st.sidebar.number_input("동승 인원 (본인 제외)", min_value=0, max_value=5, value=0)
@@ -153,24 +150,29 @@ elif st.session_state.selected_role == "passenger":
     
     st.sidebar.info(f"총 인원: **{my_party_size}명**")
     
-    # [추가] 입장 확인 버튼 (OK 버튼)
     if not st.session_state.party_confirmed:
         if st.sidebar.button("✅ 입장하기 (OK)", type="primary", use_container_width=True):
             st.session_state.party_confirmed = True
             st.rerun()
     else:
         st.sidebar.success(f"✅ 입장 완료 (총 {my_party_size}명)")
-        # 인원수 수정하고 싶을 때를 위한 리셋 버튼
         if st.sidebar.button("🔄 인원 재설정"):
             st.session_state.party_confirmed = False
             st.rerun()
+elif st.session_state.selected_role == "admin":
+    st.sidebar.success("👑 [관리자] 모드로 접속 중")
 
 db_password = st.secrets["db_password"]
 
 st.sidebar.markdown("---")
 with st.sidebar.expander("👑 관리자 메뉴"):
-    if st.text_input("암구호", type="password") == db_password:
-        if st.button("🚨 데이터 초기화", type="primary"):
+    if st.text_input("암구호", type="password") == db_password;
+        # [요구사항 3] 관리자 대시보드 버튼 추가
+        if st.button("📊 대시보드 접속", type="primary", use_container_width=True):
+            st.session_state.selected_role = "admin"
+            st.session_state.party_confirmed = True
+            st.rerun()
+        if st.button("🚨 데이터 초기화", type="primary", use_container_width=True):
             db = {"cars": [], "passengers": []}
             save_data(db)
             st.rerun()
@@ -178,17 +180,18 @@ with st.sidebar.expander("👑 관리자 메뉴"):
 # ==========================================
 # [메인 로직]
 # ==========================================
-if not user_name:
+if not user_name and st.session_state.selected_role != "admin":
     st.info("👈 왼쪽 사이드바에서 **성함**을 먼저 입력해 주세요.")
 elif not st.session_state.selected_role:
     st.info(f"환영합니다, **{user_name}** 님! 👈 왼쪽 사이드바에서 **역할** 버튼을 눌러 주세요")
 else:
-    # [추가] 탑승자인데 아직 OK 버튼 안 눌렀으면 화면 차단
     if st.session_state.selected_role == "passenger" and not st.session_state.party_confirmed:
         st.warning("👈 왼쪽 사이드바에서 동승 인원을 확인하신 후, **[✅ 입장하기 (OK)]** 버튼을 눌러주시옵소서.")
-        st.stop() # 여기서 코드 실행 중단 (우측 화면 안 보임)
+        st.stop()
+
     role = st.session_state.selected_role
-    st.write(f"#### 어서오세요, **{user_name}** ({'운전자' if role == 'driver' else '탑승자'}) 님.")
+    if role != "admin":
+        st.write(f"#### 어서오세요, **{user_name}** ({'운전자' if role == 'driver' else '탑승자'}) 님.")
     
     # --------------------------------------
     # A. 운전자 (Driver) 로직
@@ -202,45 +205,43 @@ else:
             lock_status_icon = "🔒" if is_locked else "🔓"
             
             dept_loc = my_car.get('dept_loc', '미정')
+            dest_loc = my_car.get('dest_loc', '미정')
             dept_time = my_car.get('dept_time', '미정')
             
             st.markdown(f"### {car_icon} **[{my_car['car_name']}]** {lock_status_icon}", unsafe_allow_html=True)
-            st.info(f"📍 **출발 위치:** {dept_loc}  |  ⏰ **출발 시간:** {dept_time}")
+            st.info(f"📍 **여정:** {dept_loc} ➡️ {dest_loc}  |  ⏰ **출발 시간:** {dept_time}")
 
             current_occupancy = sum(r['size'] for r in my_car['riders'])
             capacity = my_car['capacity']
             with st.container(border=True):
-                # [기능] 출발 정보 수정 및 자동 공지
                 with st.expander("📝 출발 정보 수정하기"):
                     new_loc = st.text_input("출발 위치 변경", value=dept_loc)
+                    new_dest = st.text_input("목적지 변경", value=dest_loc)
                     new_time = st.text_input("출발 시간 변경", value=dept_time)
                     if st.button("정보 수정 완료"):
                         my_car['dept_loc'] = new_loc
+                        my_car['dest_loc'] = new_dest
                         my_car['dept_time'] = new_time
                         
-                        # [자동 공지] 탑승자가 있다면 변경 사항을 알림
                         if my_car['riders']:
                             timestamp = datetime.now().strftime('%H:%M:%S')
-                            auto_msg = f"📢 출발 정보가 변경되었습니다. (위치: {new_loc}, 시간: {new_time})"
+                            auto_msg = f"📢 출발 정보가 변경되었습니다. (위치: {new_loc} ➡️ {new_dest}, 시간: {new_time})"
                             my_car['notice'] = f"[{timestamp}] {auto_msg}"
                             my_car['notice_id'] = f"{user_name}_AUTO_{datetime.now().timestamp()}"
-                            my_car['confirmed_riders'] = [] # 수신확인 초기화
+                            my_car['confirmed_riders'] = [] 
                             st.toast("탑승객들에게 정보 변경 사항이 자동으로 공지됩니다!", icon="🔔")
 
                         save_data(db)
-                        st.success("정보가 수정되었니다.")
+                        st.success("정보가 수정되었습니다.")
                         st.rerun()
 
                 c1, c2, c3 = st.columns([2, 1, 1])
-                # 탑승자 명단 표시 (이름 + 인원수)
                 riders_display = [f"{r['name']}({r['size']}인)" for r in my_car['riders']]
                 riders_str = ", ".join(riders_display) if riders_display else "없음"
                 
                 c1.markdown(f"**현재 탑승객:** :blue[{riders_str}]")
                 c1.progress(current_occupancy / capacity if capacity > 0 else 0, text=f"좌석 점유율 ({current_occupancy}/{capacity})")
                 
-                # 잠금 기능
-     
                 if is_locked:
                     if c2.button("🔓 문 열기"):
                         my_car['locked'] = False
@@ -252,13 +253,22 @@ else:
                         save_data(db)
                         st.rerun()
 
+                # [요구사항 2] 차량 등록 취소 시 탑승객을 대기 명단으로 이동
                 if c3.button("🗑️ 등록 취소"):
+                    if my_car['riders']:
+                        for rider in my_car['riders']:
+                            db['passengers'].append({
+                                "name": rider['name'],
+                                "time": "기존 차량 취소됨",
+                                "size": rider['size']
+                            })
+                        st.toast("탑승객들을 대기 명단으로 이동시켰습니다.", icon="ℹ️")
+                        
                     db['cars'] = [c for c in db['cars'] if c['driver'] != user_name]
                     save_data(db)
                     st.warning("차량 등록을 취소하였습니다.")
                     st.rerun()
 
-            # 수신 확인 현황 및 공지
             if my_car['riders']:
                 st.write("#### 📡 탑승객 수신 확인 현황")
                 confirmed_list = my_car.get('confirmed_riders', [])
@@ -293,7 +303,6 @@ else:
                 for p in db['passengers']:
                     with st.container(border=True):
                         pc1, pc2 = st.columns([4, 1])
-                        # [수정] 이름 옆에 출발 시간 표시 (없으면 '미정')
                         p_size = p.get('size', 1)
                         dept_time = p.get('time', '항시가능')
                         pc1.write(f"**{p['name']}** ({p_size}명) :blue[({dept_time})]")
@@ -316,13 +325,13 @@ else:
                     oc1, oc2, oc3 = st.columns([2, 2, 1])
                     oc1.markdown(f"**{get_car_icon_html(car['car_name'])} {car['car_name']}**", unsafe_allow_html=True)
                     oc1.caption(f"운전자: {car['driver']}")
-                    # 탑승자 명단 표시
                     r_list = [f"{r['name']}({r['size']})" for r in car['riders']]
                     riders_str = ", ".join(r_list) if r_list else "없음"
                     oc2.markdown(f"👥 **탑승자:** :blue[{riders_str}]")
                     d_loc = car.get('dept_loc', '미정')
+                    dest_loc = car.get('dest_loc', '미정')
                     d_time = car.get('dept_time', '미정')
-                    oc2.caption(f"📍 {d_loc} | ⏰ {d_time}")
+                    oc2.caption(f"📍 {d_loc} ➡️ {dest_loc} | ⏰ {d_time}")
                     
                     oc3.button("운전 중", disabled=True, key=f"view_{car['id']}")
             else:
@@ -333,13 +342,16 @@ else:
                 st.subheader("🚘 차량 등록")
                 c_name = st.text_input("차량 닉네임", placeholder="예: 홍길동_4885")
                 in_loc = st.text_input("출발 위치", placeholder="예: R5/센트럴파크")
+                # [요구사항 1] 목적지 입력 필드 추가
+                dest_loc = st.text_input("목적지", placeholder="예: 가보쟝")
                 in_time = st.text_input("출발 시간", placeholder="예: 6시 정각")
                 capacity = st.number_input("빈 자리", 1, 10, 2)
-                if st.form_submit_button("등록"):
+                # [요구사항 1] 파란색 배경의 등록하기(OK) 버튼 적용
+                if st.form_submit_button("등록하기(OK)", type="primary"):
                     fname = c_name.strip() if c_name.strip() else f"{user_name}_차"
                     db['cars'].append({
                         "driver": user_name, "car_name": fname, "capacity": capacity, 
-                        "dept_loc": in_loc, "dept_time": in_time,
+                        "dept_loc": in_loc, "dest_loc": dest_loc, "dept_time": in_time,
                         "riders": [], "notice": "", "notice_id": "", "confirmed_riders": [], "locked": False,
                         "id": f"{user_name}_{datetime.now().strftime('%M%S')}"
                     })
@@ -361,18 +373,18 @@ else:
             riding_icon = get_car_icon_html(riding_car['car_name'])
             is_locked = riding_car.get('locked', False)
             d_loc = riding_car.get('dept_loc', '미정')
+            dest_loc = riding_car.get('dest_loc', '미정')
             d_time = riding_car.get('dept_time', '미정')
 
             st.markdown(f"### {riding_icon} **{riding_car['driver']}** 님의 차에 탑승 중", unsafe_allow_html=True)
-            st.info(f"📍 **출발 위치:** {d_loc}  |  ⏰ **출발 시간:** {d_time}")
+            st.info(f"📍 **여정:** {d_loc} ➡️ {dest_loc}  |  ⏰ **출발 시간:** {d_time}")
             
             r_list = [f"{r['name']}({r['size']})" for r in riding_car['riders']]
             st.info(f"**탑승자 :** :blue[{', '.join(r_list)}]")
 
             if is_locked:
-                st.error("🔒 **차량 문이 잠겨 하차가 불가능합니다.**")
+                st.error("🔒 **차량 문이 잠겨 하차가 불가하옵니다.**")
             
-            # 공지사항
             current_notice = riding_car.get('notice', '')
             current_notice_id = riding_car.get('notice_id', '')
             confirmed_list = riding_car.get('confirmed_riders', [])
@@ -402,9 +414,7 @@ else:
                 st.button("⛔ 하차 불가 (문 잠김)", disabled=True)
             else:
                 if st.button("🏃 하차하기"):
-                    # 내 이름과 일치하는 객체 제거
                     riding_car['riders'] = [r for r in riding_car['riders'] if r['name'] != user_name]
-
                     if 'confirmed_riders' in riding_car and user_name in riding_car['confirmed_riders']:
                         riding_car['confirmed_riders'].remove(user_name)
                     save_data(db)
@@ -418,11 +428,9 @@ else:
                 save_data(db)
                 st.rerun()
         else:
-            # [추가] 출발 가능 시간 입력칸
             dept_time_input = st.text_input("출발 가능 시간 (미입력시 [항시 가능] 으로 대기)", placeholder="예: 6시 10분, 지금 당장")
 
             if st.button("📝 대기 명단 등록"):
-                # [수정] 저장할 때 시간 정보('time')도 함께 저장
                 final_time = dept_time_input if dept_time_input else "시간 미정"
                 db['passengers'].append({
                     "name": user_name, 
@@ -441,6 +449,7 @@ else:
                 is_full = cur_occ >= cap
                 is_car_locked = car.get('locked', False)
                 d_loc = car.get('dept_loc', '미정')
+                dest_loc = car.get('dest_loc', '미정')
                 d_time = car.get('dept_time', '미정')
                 
                 with st.container(border=True):
@@ -448,9 +457,8 @@ else:
                     lock_icon = "🔒" if is_car_locked else ""
                     c1.markdown(f"### {get_car_icon_html(car['car_name'])} {car['car_name']} {lock_icon}", unsafe_allow_html=True)
                     c1.caption(f"운전자: {car['driver']}")
-                    c1.write(f"📍 {d_loc} | ⏰ {d_time}")
+                    c1.write(f"📍 {d_loc} ➡️ {dest_loc} | ⏰ {d_time}")
                     
-                    # 탑승자 명단 표시
                     r_list = [f"{r['name']}({r['size']})" for r in car['riders']]
                     riders_str = ", ".join(r_list) if r_list else "없음"
                     c1.markdown(f"**탑승자:** :blue[{riders_str}]")
@@ -462,20 +470,13 @@ else:
                     elif is_car_locked:
                         c3.button("⛔ 마감", disabled=True, key=f"l_{car['id']}")
                     else:
-                        # 자리 여유 확인 (내 파티 인원수 고려)
                         if cur_occ + my_party_size <= cap:
                             if c3.button(f"탑승 ({my_party_size}명)", key=f"j_{car['id']}", type="primary"):
-                                # 기존 차에서 하차 (환승)
                                 for ec in db['cars']:
-                                    # 리스트 내 딕셔너리 검사
                                     ec['riders'] = [r for r in ec['riders'] if r['name'] != user_name]
                                     if 'confirmed_riders' in ec and user_name in ec['confirmed_riders']:
                                         ec['confirmed_riders'].remove(user_name)
-                                
-                                # 대기 명단 제거
                                 db['passengers'] = [p for p in db['passengers'] if p['name'] != user_name]
-                                
-                                # 새 차 탑승 (이름+인원 저장)
                                 car['riders'].append({"name": user_name, "size": my_party_size})
                                 save_data(db)
                                 st.rerun()
@@ -485,6 +486,38 @@ else:
                             c3.button(f"좌석부족({my_party_size}명)", disabled=True, key=f"lack_{car['id']}")
         else:
             st.write("운행 중인 차량 없음")
+
+    # --------------------------------------
+    # C. 관리자 (Admin) 로직 [요구사항 3]
+    # --------------------------------------
+    elif role == "admin":
+        st.markdown("### 👑 카풀 현황 대시보드")
+        
+        col_m1, col_m2, col_m3 = st.columns(3)
+        col_m1.metric("등록된 차량", f"{len(db['cars'])} 대")
+        col_m2.metric("대기 중인 인원", f"{len(db['passengers'])} 팀")
+        total_riders = sum(sum(r['size'] for r in c['riders']) for c in db['cars'])
+        col_m3.metric("탑승 완료된 총 인원", f"{total_riders} 명")
+        
+        st.markdown("---")
+        st.write("#### 🚘 운행 차량 상세 내역")
+        if db['cars']:
+            for car in db['cars']:
+                cur_occ = sum(r['size'] for r in car['riders'])
+                with st.expander(f"운전자: {car['driver']}의 차량 [{car['car_name']}] (점유 {cur_occ}/{car['capacity']})", expanded=True):
+                    st.write(f"- **여정:** {car.get('dept_loc', '미정')} ➡️ {car.get('dest_loc', '미정')}")
+                    st.write(f"- **시간:** {car.get('dept_time', '미정')}")
+                    r_list = [f"{r['name']}({r['size']}인)" for r in car['riders']]
+                    st.write(f"- **탑승객:** {', '.join(r_list) if r_list else '없음'}")
+        else:
+            st.info("현재 운행 중인 차량이 없음.")
+            
+        st.write("#### 🚶 대기 명단 상세 내역")
+        if db['passengers']:
+            p_list = [f"{p['name']}({p.get('size', 1)}인, {p.get('time', '미정')})" for p in db['passengers']]
+            st.write(", ".join(p_list))
+        else:
+            st.info("대기 중인 인원 없음.")
 
 # ==========================================
 # [왕실 기술부] 자동 새로고침 (카운트다운)
@@ -499,5 +532,3 @@ for i in range(5, 0, -1):
     time.sleep(1)
 
 st.rerun()
-
-
