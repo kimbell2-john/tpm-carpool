@@ -166,7 +166,7 @@ db_password = st.secrets["db_password"]
 
 st.sidebar.markdown("---")
 with st.sidebar.expander("👑 관리자 메뉴"):
-    if st.text_input("암구호", type="password") == db_password;
+    if st.text_input("암구호", type="password") == db_password:
         # [요구사항 3] 관리자 대시보드 버튼 추가
         if st.button("📊 대시보드 접속", type="primary", use_container_width=True):
             st.session_state.selected_role = "admin"
