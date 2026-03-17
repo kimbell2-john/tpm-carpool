@@ -104,14 +104,7 @@ def save_data(data):
 # 페이지 설정
 st.set_page_config(page_title="APP1 TPM 카풀 매니저", page_icon="🚘", layout="wide")
 
-# 타이틀 표시
-main_car_icon_html = get_local_car_base64_html("supercar.jpg", target_height=60)
-sub_place_icon_html = get_local_place_base64_html("jeju.jpeg", target_height=50)
-
-st.markdown(f"# {main_car_icon_html} APP1 TPM 카풀 매니저", unsafe_allow_html=True)
-st.markdown("---")
-
-# 데이터 로드
+# 데이터 로드 및 세션 상태 초기화
 db = load_data()
 if 'selected_role' not in st.session_state:
     st.session_state.selected_role = None
@@ -119,6 +112,25 @@ if 'last_notice_id' not in st.session_state:
     st.session_state.last_notice_id = ""
 if 'party_confirmed' not in st.session_state:
     st.session_state.party_confirmed = False
+
+# ==========================================
+# [타이틀 영역 및 대시보드 진입 버튼]
+# ==========================================
+main_car_icon_html = get_local_car_base64_html("supercar.jpg", target_height=60)
+sub_place_icon_html = get_local_place_base64_html("jeju.jpeg", target_height=50)
+
+col_t1, col_t2 = st.columns([4, 1])
+with col_t1:
+    st.markdown(f"# {main_car_icon_html} APP1 TPM 카풀 매니저", unsafe_allow_html=True)
+with col_t2:
+    st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+    # 누구나 볼 수 있는 대시보드 버튼 배치
+    if st.button("📊 현황 대시보드", type="primary", use_container_width=True):
+        st.session_state.selected_role = "admin"
+        st.session_state.party_confirmed = True
+        st.rerun()
+
+st.markdown("---")
 
 # ==========================================
 # [사이드바]
@@ -160,18 +172,13 @@ elif st.session_state.selected_role == "passenger":
             st.session_state.party_confirmed = False
             st.rerun()
 elif st.session_state.selected_role == "admin":
-    st.sidebar.success("👑 [관리자] 모드로 접속 중")
+    st.sidebar.success("📊 [대시보드] 모드로 열람 중")
 
 db_password = st.secrets["db_password"]
-
 st.sidebar.markdown("---")
 with st.sidebar.expander("👑 관리자 메뉴"):
+    # 암구호 통과 시 데이터 초기화만 노출
     if st.text_input("암구호", type="password") == db_password:
-        # [요구사항 3] 관리자 대시보드 버튼 추가
-        if st.button("📊 대시보드 접속", type="primary", use_container_width=True):
-            st.session_state.selected_role = "admin"
-            st.session_state.party_confirmed = True
-            st.rerun()
         if st.button("🚨 데이터 초기화", type="primary", use_container_width=True):
             db = {"cars": [], "passengers": []}
             save_data(db)
@@ -253,7 +260,6 @@ else:
                         save_data(db)
                         st.rerun()
 
-                # [요구사항 2] 차량 등록 취소 시 탑승객을 대기 명단으로 이동
                 if c3.button("🗑️ 등록 취소"):
                     if my_car['riders']:
                         for rider in my_car['riders']:
@@ -331,7 +337,7 @@ else:
                     d_loc = car.get('dept_loc', '미정')
                     dest_loc = car.get('dest_loc', '미정')
                     d_time = car.get('dept_time', '미정')
-                    oc2.caption(f"📍 {d_loc} ➡️ {dest_loc} | ⏰ {d_time}")
+                    oc2.caption(f"📍{d_loc} ➡️ {dest_loc} | ⏰ {d_time}")
                     
                     oc3.button("운전 중", disabled=True, key=f"view_{car['id']}")
             else:
@@ -342,11 +348,9 @@ else:
                 st.subheader("🚘 차량 등록")
                 c_name = st.text_input("차량 닉네임", placeholder="예: 홍길동_4885")
                 in_loc = st.text_input("출발 위치", placeholder="예: R5/센트럴파크")
-                # [요구사항 1] 목적지 입력 필드 추가
                 dest_loc = st.text_input("목적지", placeholder="예: 가보쟝")
                 in_time = st.text_input("출발 시간", placeholder="예: 6시 정각")
                 capacity = st.number_input("빈 자리", 1, 10, 2)
-                # [요구사항 1] 파란색 배경의 등록하기(OK) 버튼 적용
                 if st.form_submit_button("등록하기(OK)", type="primary"):
                     fname = c_name.strip() if c_name.strip() else f"{user_name}_차"
                     db['cars'].append({
@@ -383,7 +387,7 @@ else:
             st.info(f"**탑승자 :** :blue[{', '.join(r_list)}]")
 
             if is_locked:
-                st.error("🔒 **차량 문이 잠겨 하차가 불가하옵니다.**")
+                st.error("🔒 **차량 문이 잠겨 하차가 불가능합니다.**")
             
             current_notice = riding_car.get('notice', '')
             current_notice_id = riding_car.get('notice_id', '')
@@ -488,10 +492,10 @@ else:
             st.write("운행 중인 차량 없음")
 
     # --------------------------------------
-    # C. 관리자 (Admin) 로직 [요구사항 3]
+    # C. 대시보드 (Admin) 로직
     # --------------------------------------
     elif role == "admin":
-        st.markdown("### 👑 카풀 현황 대시보드")
+        st.markdown("### 📊 대시보드")
         
         col_m1, col_m2, col_m3 = st.columns(3)
         col_m1.metric("등록된 차량", f"{len(db['cars'])} 대")
