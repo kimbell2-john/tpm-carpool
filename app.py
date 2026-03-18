@@ -84,22 +84,30 @@ def get_car_icon_html(car_name, target_height=40):
     return f'<img src="{image_url}" style="height: {target_height}px; vertical-align: middle; margin-right: 10px; border-radius: 4px;">'
 
 # ==========================================
-# [왕실 서고] 데이터 관리 함수
+# [왕실 서고] 데이터 관리 함수 (Supabase 연동)
 # ==========================================
-DB_FILE = 'carpool_data.json'
+@st.cache_resource
+def init_connection():
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    return create_client(url, key)
+
+supabase = init_connection()
 
 def load_data():
-    if not os.path.exists(DB_FILE):
+    try:
+        response = supabase.table("carpool_db").select("data").eq("id", 1).execute()
+        if response.data:
+            return response.data[0]['data']
         return {"cars": [], "passengers": []}
-    with open(DB_FILE, 'r', encoding='utf-8') as f:
-        try:
-            return json.load(f)
-        except json.JSONDecodeError:
-            return {"cars": [], "passengers": []}
+    except Exception as e:
+        return {"cars": [], "passengers": []}
 
 def save_data(data):
-    with open(DB_FILE, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+    try:
+        supabase.table("carpool_db").update({"data": data}).eq("id", 1).execute()
+    except Exception as e:
+        st.error(f"장부 기록 중 오류가 발생하였사옵니다: {e}")
 
 # 페이지 설정
 st.set_page_config(page_title="APP1 TPM 카풀 매니저", page_icon="🚘", layout="wide")
@@ -174,7 +182,10 @@ elif st.session_state.selected_role == "passenger":
 elif st.session_state.selected_role == "admin":
     st.sidebar.success("📊 [대시보드] 모드로 열람 중")
 
-db_password = st.secrets["db_password"]
+try:
+    db_password = st.secrets["db_password"]
+except KeyError:
+    db_password = "1325"
 st.sidebar.markdown("---")
 with st.sidebar.expander("👑 관리자 메뉴"):
     # 암구호 통과 시 데이터 초기화만 노출
