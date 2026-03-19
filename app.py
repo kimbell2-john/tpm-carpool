@@ -8,6 +8,8 @@ import time
 from io import BytesIO
 from datetime import datetime
 from PIL import Image
+from supabase import create_client, Client
+
 
 # ==========================================
 # [TPM 파트 CA 기술부] 이미지 및 유틸리티 함수
