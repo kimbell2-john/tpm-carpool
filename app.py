@@ -103,6 +103,7 @@ def load_data():
             return response.data[0]['data']
         return {"cars": [], "passengers": []}
     except Exception as e:
+        st.error(f"장부 로드 중 오류가 발생하였사옵니다: {e}")
         return {"cars": [], "passengers": []}
 
 def save_data(data):
