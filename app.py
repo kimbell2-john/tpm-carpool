@@ -113,7 +113,7 @@ def save_data(data):
         st.error(f"장부 기록 중 오류가 발생하였사옵니다: {e}")
 
 # 페이지 설정
-st.set_page_config(page_title="TPM 파트 카풀", page_icon="🚘", type="primary", use_container_width=True)
+st.set_page_config(page_title="TPM 파트 카풀", page_icon="🚘", layout="centered")
 
 # 데이터 로드 및 세션 상태 초기화
 db = load_data()
