@@ -113,7 +113,7 @@ def save_data(data):
         st.error(f"장부 기록 중 오류가 발생하였사옵니다: {e}")
 
 # 페이지 설정
-st.set_page_config(page_title="APP1 TPM 카풀 매니저", page_icon="🚘", layout="wide")
+st.set_page_config(page_title="TPM 파트 카풀", page_icon="🚘", type="primary", use_container_width=True)
 
 # 데이터 로드 및 세션 상태 초기화
 db = load_data()
@@ -132,7 +132,7 @@ sub_place_icon_html = get_local_place_base64_html("jeju.jpeg", target_height=50)
 
 col_t1, col_t2 = st.columns([4, 1])
 with col_t1:
-    st.markdown(f"# {main_car_icon_html} APP1 TPM 카풀 매니저", unsafe_allow_html=True)
+    st.markdown(f"## {main_car_icon_html} TPM 파트 카풀", unsafe_allow_html=True)
 with col_t2:
     st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
     # 누구나 볼 수 있는 대시보드 버튼 배치
