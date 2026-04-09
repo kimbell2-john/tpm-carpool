@@ -185,10 +185,8 @@ elif st.session_state.selected_role == "passenger":
 elif st.session_state.selected_role == "admin":
     st.sidebar.success("📊 [대시보드] 모드로 열람 중")
 
-try:
-    db_password = st.secrets["db_password"]
-except KeyError:
-    db_password = "1325"
+db_password = st.secrets["db_password"]
+
 st.sidebar.markdown("---")
 with st.sidebar.expander("👑 관리자 메뉴"):
     # 암구호 통과 시 데이터 초기화만 노출
